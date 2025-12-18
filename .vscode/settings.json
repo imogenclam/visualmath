@@ -1,0 +1,9 @@
+{
+    "editor.fontSize": 16,
+    "editor.tabSize": 4,
+    "editor.wordWrap": "on",
+    "files.autoSave": "afterDelay",
+    "go.formatTool": "gofmt",
+    "go.useLanguageServer": true,
+    "git.autofetch": true
+}
