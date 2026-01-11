@@ -3,11 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	//"html/template"
 	"net/http"
-	"strconv"
-
-	"github.com/go-chi/chi/v5"
 )
 
 type ModuleHandler struct {
@@ -24,6 +20,20 @@ func (h *ModuleHandler) ListModules(w http.ResponseWriter, r *http.Request) {
 <head>
     <title>Библиотека модулей - VisualMath</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <!-- MathJax для LaTeX -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
     <style>
         .modules-container {
             max-width: 1200px;
@@ -287,6 +297,20 @@ func (h *ModuleHandler) CreateModulePage(w http.ResponseWriter, r *http.Request)
 <head>
     <title>Создать модуль - VisualMath</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <!-- MathJax для LaTeX -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
     <style>
         .create-container {
             max-width: 800px;
@@ -494,6 +518,17 @@ func (h *ModuleHandler) CreateModulePage(w http.ResponseWriter, r *http.Request)
             border-radius: 3px;
             font-family: monospace;
         }
+        .latex-preview {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 15px;
+            background: #f8f9fa;
+            min-height: 100px;
+            font-family: "Times New Roman", Times, serif;
+            font-size: 16px;
+            line-height: 1.6;
+        }
     </style>
 </head>
 <body>
@@ -605,12 +640,16 @@ func (h *ModuleHandler) CreateModulePage(w http.ResponseWriter, r *http.Request)
                 case 'text':
                     html = '<div class="form-group">' +
                            '<label for="contentText">Текст модуля *</label>' +
-                           '<textarea id="contentText" name="content" rows="15" placeholder="Введите текст лекции..." required></textarea>' +
+                           '<textarea id="contentText" name="content" rows="15" placeholder="Введите текст лекции..." required oninput="updateLaTeXPreview()"></textarea>' +
                            '<div class="latex-hint">' +
                            '<strong>Подсказка по LaTeX:</strong><br>' +
                            '• Формулы в строке: <code>$E = mc^2$</code><br>' +
                            '• Отдельные формулы: <code>$$\\int_a^b f(x)dx$$</code><br>' +
                            '• Греческие буквы: <code>$\\alpha, \\beta, \\gamma$</code>' +
+                           '</div>' +
+                           '<div class="latex-preview" id="latexPreview">' +
+                           '<h4>Предпросмотр:</h4>' +
+                           '<div id="previewContent"></div>' +
                            '</div>' +
                            '</div>' +
                            '<div class="form-group">' +
@@ -667,6 +706,25 @@ func (h *ModuleHandler) CreateModulePage(w http.ResponseWriter, r *http.Request)
             // Инициализируем загрузку изображений для текстового модуля
             if (type === 'text') {
                 initImageUpload();
+                updateLaTeXPreview();
+            }
+        }
+        
+        // Обновление предпросмотра LaTeX
+        function updateLaTeXPreview() {
+            const textarea = document.getElementById('contentText');
+            const preview = document.getElementById('previewContent');
+            
+            if (!textarea || !preview) return;
+            
+            const content = textarea.value;
+            preview.innerHTML = content;
+            
+            // Обновляем MathJax
+            if (window.MathJax) {
+                MathJax.typesetPromise([preview]).catch((err) => {
+                    console.error('MathJax error:', err);
+                });
             }
         }
         
@@ -885,17 +943,12 @@ func (h *ModuleHandler) CreateModule(w http.ResponseWriter, r *http.Request) {
 
 // GetModule возвращает информацию о модуле
 func (h *ModuleHandler) GetModule(w http.ResponseWriter, r *http.Request) {
-	moduleID := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(moduleID)
-	if err != nil {
-		http.Error(w, "Invalid module ID", http.StatusBadRequest)
-		return
-	}
+	//_ := "1" // временно фиксированный ID
 
 	// Здесь будет получение из БД
 	// Пока возвращаем тестовые данные
 	module := map[string]interface{}{
-		"id":          id,
+		"id":          1,
 		"title":       "Пример модуля",
 		"course":      "Математический анализ",
 		"description": "Описание модуля",
@@ -913,12 +966,8 @@ func (h *ModuleHandler) GetModule(w http.ResponseWriter, r *http.Request) {
 
 // UpdateModule обновляет модуль
 func (h *ModuleHandler) UpdateModule(w http.ResponseWriter, r *http.Request) {
-	moduleID := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(moduleID)
-	if err != nil {
-		http.Error(w, "Invalid module ID", http.StatusBadRequest)
-		return
-	}
+	// moduleID не используется в текущей реализации
+	// В реальной версии нужно будет извлекать ID из URL
 
 	var request struct {
 		Title       string      `json:"title"`
@@ -936,30 +985,25 @@ func (h *ModuleHandler) UpdateModule(w http.ResponseWriter, r *http.Request) {
 	// Здесь будет обновление в БД
 
 	response := map[string]interface{}{
-		"success":  true,
-		"message":  "Module updated successfully",
-		"module_id": id,
+		"success":   true,
+		"message":   "Module updated successfully",
+		"module_id": "1",
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
-
 // DeleteModule удаляет модуль
 func (h *ModuleHandler) DeleteModule(w http.ResponseWriter, r *http.Request) {
-	moduleID := chi.URLParam(r, "id")
-	id, err := strconv.Atoi(moduleID)
-	if err != nil {
-		http.Error(w, "Invalid module ID", http.StatusBadRequest)
-		return
-	}
+	// moduleID не используется в текущей реализации
+	// В реальной версии нужно будет извлекать ID из URL
 
 	// Здесь будет удаление из БД
 
 	response := map[string]interface{}{
-		"success":  true,
-		"message":  "Module deleted successfully",
-		"module_id": id,
+		"success":   true,
+		"message":   "Module deleted successfully",
+		"module_id": "1",
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1006,7 +1050,7 @@ func (h *ModuleHandler) ListModulesAPI(w http.ResponseWriter, r *http.Request) {
 
 // ViewModulePage показывает страницу просмотра модуля
 func (h *ModuleHandler) ViewModulePage(w http.ResponseWriter, r *http.Request) {
-	moduleID := chi.URLParam(r, "id")
+	moduleID := "1" // временно фиксированный ID
 	
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	
@@ -1016,6 +1060,27 @@ func (h *ModuleHandler) ViewModulePage(w http.ResponseWriter, r *http.Request) {
 <head>
     <title>Просмотр модуля - VisualMath</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <!-- MathJax для LaTeX -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+        
+        // Обновить MathJax после загрузки страницы
+        window.addEventListener('DOMContentLoaded', function() {
+            if (window.MathJax) {
+                MathJax.typesetPromise();
+            }
+        });
+    </script>
     <style>
         .view-container {
             max-width: 1000px;
@@ -1075,6 +1140,9 @@ func (h *ModuleHandler) ViewModulePage(w http.ResponseWriter, r *http.Request) {
             font-size: 18px;
             line-height: 1.6;
         }
+        .latex-content p {
+            margin-bottom: 20px;
+        }
     </style>
 </head>
 <body>
@@ -1093,14 +1161,22 @@ func (h *ModuleHandler) ViewModulePage(w http.ResponseWriter, r *http.Request) {
             <div class="latex-content">
                 <p>Производная функции $f(x)$ в точке $x_0$ определяется как предел:</p>
                 <p>$$f'(x_0) = \lim_{\Delta x \to 0} \frac{f(x_0 + \Delta x) - f(x_0)}{\Delta x}$$</p>
-                <p>Это основное понятие дифференциального исчисления.</p>
+                <p>Это основное понятие дифференциального исчисления. Рассмотрим пример: если $f(x) = x^2$, то $f'(x) = 2x$.</p>
+                <p>Свойства производной:</p>
+                <ul>
+                    <li>Производная константы: $(c)' = 0$</li>
+                    <li>Производная суммы: $(f + g)' = f' + g'$</li>
+                    <li>Производная произведения: $(fg)' = f'g + fg'$</li>
+                    <li>Производная частного: $\left(\frac{f}{g}\right)' = \frac{f'g - fg'}{g^2}$</li>
+                </ul>
+                <p>Пример вычисления: $$\frac{d}{dx}(x^3 + 2x^2 - 5x + 1) = 3x^2 + 4x - 5$$</p>
             </div>
         </div>
         
         <div class="module-actions">
             <a href="/modules/edit/` + moduleID + `" class="btn btn-edit">Редактировать</a>
             <a href="/modules" class="btn btn-back">Назад к списку</a>
-            <button class="btn btn-delete" onclick="deleteModule(` + moduleID + `)">Удалить</button>
+            <button class="btn btn-delete" onclick="deleteModule('` + moduleID + `')">Удалить</button>
         </div>
     </div>
     
@@ -1130,7 +1206,7 @@ func (h *ModuleHandler) ViewModulePage(w http.ResponseWriter, r *http.Request) {
 
 // EditModulePage показывает страницу редактирования модуля
 func (h *ModuleHandler) EditModulePage(w http.ResponseWriter, r *http.Request) {
-	moduleID := chi.URLParam(r, "id")
+	moduleID := "1" // временно фиксированный ID
 	
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	
@@ -1140,6 +1216,20 @@ func (h *ModuleHandler) EditModulePage(w http.ResponseWriter, r *http.Request) {
 <head>
     <title>Редактирование модуля - VisualMath</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <!-- MathJax для LaTeX -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
     <style>
         .edit-container {
             max-width: 800px;
@@ -1153,6 +1243,10 @@ func (h *ModuleHandler) EditModulePage(w http.ResponseWriter, r *http.Request) {
         .edit-header h1 {
             color: #2c3e50;
             margin-bottom: 10px;
+        }
+        .edit-header p {
+            color: #7f8c8d;
+            font-size: 16px;
         }
         .edit-form {
             background: white;
@@ -1243,7 +1337,17 @@ func (h *ModuleHandler) EditModulePage(w http.ResponseWriter, r *http.Request) {
 
 $$f'(x_0) = \lim_{\Delta x \to 0} \frac{f(x_0 + \Delta x) - f(x_0)}{\Delta x}$$
 
-Это основное понятие дифференциального исчисления.</textarea>
+Это основное понятие дифференциального исчисления. Рассмотрим пример: если $f(x) = x^2$, то $f'(x) = 2x$.
+
+Свойства производной:
+<ul>
+<li>Производная константы: $(c)' = 0$</li>
+<li>Производная суммы: $(f + g)' = f' + g'$</li>
+<li>Производная произведения: $(fg)' = f'g + fg'$</li>
+<li>Производная частного: $\left(\frac{f}{g}\right)' = \frac{f'g - fg'}{g^2}$</li>
+</ul>
+
+Пример вычисления: $$\frac{d}{dx}(x^3 + 2x^2 - 5x + 1) = 3x^2 + 4x - 5$$</textarea>
             </div>
             
             <div class="form-actions">
